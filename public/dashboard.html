@@ -38,25 +38,12 @@
             padding: 40px;
         }
 
-        .cards {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
         .card {
             background: #1a1a2e;
             padding: 20px;
             border-radius: 10px;
-            flex: 1;
-            min-width: 200px;
+            margin-bottom: 20px;
             box-shadow: 0 0 15px rgba(0,255,255,0.2);
-            transition: 0.3s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 0 25px cyan;
         }
 
         h3 {
@@ -64,8 +51,25 @@
             color: cyan;
         }
 
-        #status {
-            margin-top: 15px;
+        input, select {
+            padding: 8px;
+            margin: 5px 0;
+            width: 200px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: cyan;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            box-shadow: 0 0 10px cyan;
+        }
+
+        #createUserMsg {
+            margin-top: 10px;
             color: #00ff88;
         }
     </style>
@@ -74,69 +78,121 @@
 <body>
 
 <script>
-async function verifyToken() {
-    const token = localStorage.getItem("makersToken");
+// ==========================
+// AUTH CHECK
+// ==========================
+const token = localStorage.getItem("token");
 
-    if (!token) {
-        window.location.href = "login.html";
-        return;
-    }
-
-    try {
-        const response = await fetch("/api/protected", {
-            headers: {
-                "Authorization": "Bearer " + token
-            }
-        });
-
-        if (!response.ok) {
-            localStorage.removeItem("makersToken");
-            window.location.href = "login.html";
-        } else {
-            const data = await response.json();
-            document.getElementById("status").innerText = data.message;
-        }
-
-    } catch (error) {
-        window.location.href = "login.html";
-    }
+if (!token) {
+    window.location.href = "/login.html";
 }
 
-function logout() {
-    localStorage.removeItem("makersToken");
-    window.location.href = "login.html";
+// Decode JWT
+function parseJwt(token) {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
 }
 
-verifyToken();
+let user;
+
+try {
+    user = parseJwt(token);
+} catch (err) {
+    localStorage.removeItem("token");
+    window.location.href = "/login.html";
+}
+
+// ==========================
+// VERIFY TOKEN WITH SERVER
+// ==========================
+fetch("/api/protected", {
+    headers: {
+        "Authorization": "Bearer " + token
+    }
+})
+.then(res => {
+    if (!res.ok) {
+        localStorage.removeItem("token");
+        window.location.href = "/login.html";
+    }
+});
 </script>
 
 <header>
     <h2>MAKERS DASHBOARD</h2>
-    <a class="logout" onclick="logout()">Logout</a>
+    <div class="logout" onclick="logout()">Logout</div>
 </header>
 
 <div class="content">
-    <h1>Welcome, Makers Team 🚀</h1>
 
-    <p id="status">Verifying access...</p>
-
-    <div class="cards">
-        <div class="card">
-            <h3>Projects</h3>
-            <p>Manage and track team projects.</p>
-        </div>
-
-        <div class="card">
-            <h3>Tasks</h3>
-            <p>Assign and monitor team tasks.</p>
-        </div>
-
-        <div class="card">
-            <h3>Members</h3>
-            <p>View team members and roles.</p>
-        </div>
+    <div class="card">
+        <h3>Welcome</h3>
+        <p>Logged in as: <strong id="userInfo"></strong></p>
     </div>
+
+    <!-- ADMIN PANEL -->
+    <div class="card" id="adminPanel" style="display:none;">
+        <h3>Create New User</h3>
+
+        <input type="text" id="newUsername" placeholder="Username"><br>
+        <input type="password" id="newPassword" placeholder="Password"><br>
+
+        <select id="newRole">
+            <option value="member">Member</option>
+            <option value="admin">Admin</option>
+        </select><br><br>
+
+        <button onclick="createUser()">Create User</button>
+
+        <p id="createUserMsg"></p>
+    </div>
+
 </div>
+
+<script>
+// Show logged user info
+document.getElementById("userInfo").innerText =
+    user.role.toUpperCase() + " (" + user.id + ")";
+
+// Show admin panel only if admin
+if (user.role === "admin") {
+    document.getElementById("adminPanel").style.display = "block";
+}
+
+// ==========================
+// CREATE USER FUNCTION
+// ==========================
+function createUser() {
+    const username = document.getElementById("newUsername").value;
+    const password = document.getElementById("newPassword").value;
+    const role = document.getElementById("newRole").value;
+
+    fetch("/api/create-user", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ username, password, role })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("createUserMsg").innerText = data.message;
+    })
+    .catch(err => {
+        document.getElementById("createUserMsg").innerText = "Error creating user";
+    });
+}
+
+// ==========================
+// LOGOUT
+// ==========================
+function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "/login.html";
+}
+</script>
 
 </body>
 </html>
