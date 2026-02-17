@@ -27,9 +27,7 @@ app.post("/api/login", (req, res) => {
         res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 });
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDB Connected"))
-    .catch(err => console.log(err));
+
 
 // PROTECTED ROUTE
 app.get("/api/protected", (req, res) => {
@@ -51,6 +49,9 @@ app.get("/api/protected", (req, res) => {
 
 const port = process.env.port || 3000;
 
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log("MongoDB Connected"))
+    .catch(err => console.log(err));
 app.listen(3000, () => {
     console.log("Server running.....");
 });
