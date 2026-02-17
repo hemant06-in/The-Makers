@@ -1,35 +1,83 @@
-const mongoose = require("mongoose");
 const express = require("express");
+const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 const path = require("path");
 
 const app = express();
 
+// =====================
+// MIDDLEWARE
+// =====================
 app.use(express.json());
 app.use(express.static("public"));
 
-const SECRET_KEY = "makers_secret_key";
+// =====================
+// ENV VARIABLES
+// =====================
+const PORT = process.env.PORT || 3000;
+const SECRET_KEY = process.env.JWT_SECRET || "makers_secret";
 
-// Fake user (for now)
-const USER = {
-    username: "makers",
-    password: "2026@"
-};
+// =====================
+// MONGODB CONNECTION
+// =====================
+if (!process.env.MONGO_URI) {
+    console.error("❌ MONGO_URI is not defined in environment variables");
+    process.exit(1);
+}
 
-// LOGIN API
-app.post("/api/login", (req, res) => {
-    const { username, password } = req.body;
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log("✅ MongoDB Connected"))
+    .catch(err => {
+        console.error("❌ MongoDB Connection Error:", err);
+        process.exit(1);
+    });
 
-    if (username === USER.username && password === USER.password) {
-        const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: "1h" });
+// =====================
+// USER MODEL
+// =====================
+const userSchema = new mongoose.Schema({
+    username: { type: String, unique: true },
+    password: String,
+    role: { type: String, default: "member" }
+});
+
+const User = mongoose.model("User", userSchema);
+
+// =====================
+// LOGIN ROUTE
+// =====================
+app.post("/api/login", async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
+        }
+
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            SECRET_KEY,
+            { expiresIn: "1h" }
+        );
+
         res.json({ success: true, token });
-    } else {
-        res.status(401).json({ success: false, message: "Invalid credentials" });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
     }
 });
 
-
+// =====================
 // PROTECTED ROUTE
+// =====================
 app.get("/api/protected", (req, res) => {
     const authHeader = req.headers.authorization;
 
@@ -40,18 +88,16 @@ app.get("/api/protected", (req, res) => {
     const token = authHeader.split(" ")[1];
 
     try {
-        jwt.verify(token, SECRET_KEY);
-        res.json({ message: "Access granted to Makers Dashboard 🚀" });
+        const decoded = jwt.verify(token, SECRET_KEY);
+        res.json({ message: "Access granted 🚀", user: decoded });
     } catch (err) {
         res.status(403).json({ message: "Invalid token" });
     }
 });
 
-const port = process.env.port || 3000;
-
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDB Connected"))
-    .catch(err => console.log(err));
-app.listen(3000, () => {
-    console.log("Server running.....");
+// =====================
+// START SERVER
+// =====================
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
 });
