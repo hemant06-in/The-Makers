@@ -74,6 +74,28 @@ app.post("/api/login", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
+app.get("/create-admin", async (req, res) => {
+    try {
+        const existing = await User.findOne({ username: "admin" });
+        if (existing) {
+            return res.send("Admin already exists");
+        }
+
+        const hashedPassword = await bcrypt.hash("Makers123", 10);
+
+        await User.create({
+            username: "admin",
+            password: hashedPassword,
+            role: "admin"
+        });
+
+        res.send("Admin created successfully ✅");
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error creating admin");
+    }
+});
 
 // =====================
 // PROTECTED ROUTE
