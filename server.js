@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const path = require("path");
@@ -11,8 +12,8 @@ const SECRET_KEY = "makers_secret_key";
 
 // Fake user (for now)
 const USER = {
-    username: process.env.ADMIN_USER,
-    password: process.env.ADMIN_PASS
+    username: "makers",
+    password: "2026@"
 };
 
 // LOGIN API
@@ -26,6 +27,9 @@ app.post("/api/login", (req, res) => {
         res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 });
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log("MongoDB Connected"))
+    .catch(err => console.log(err));
 
 // PROTECTED ROUTE
 app.get("/api/protected", (req, res) => {
@@ -49,6 +53,4 @@ const port = process.env.port || 3000;
 
 app.listen(3000, () => {
     console.log("Server running.....");
-
 });
-
