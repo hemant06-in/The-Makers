@@ -11,8 +11,8 @@ const SECRET_KEY = "makers_secret_key";
 
 // Fake user (for now)
 const USER = {
-    username: "makers",
-    password: "2026@"
+    username: process.env.ADMIN_USER,
+    password: process.env.ADMIN_PASS
 };
 
 // LOGIN API
@@ -51,3 +51,4 @@ app.listen(3000, () => {
     console.log("Server running.....");
 
 });
+
