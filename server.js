@@ -1,31 +1,34 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const path = require("path");
 
 const app = express();
 
-// =====================
+// ======================
 // MIDDLEWARE
-// =====================
+// ======================
 app.use(express.json());
-app.use(express.static("public"));
+app.use(express.static("public")); // if your frontend is inside /public
 
-// =====================
-// ENV VARIABLES
-// =====================
+// ======================
+// ENV CONFIG
+// ======================
 const PORT = process.env.PORT || 3000;
-const SECRET_KEY = process.env.JWT_SECRET || "makers_secret";
+const SECRET_KEY = process.env.JWT_SECRET || "makers_secret_key";
 
-// =====================
-// MONGODB CONNECTION
-// =====================
+// ======================
+// CHECK MONGO ENV
+// ======================
 if (!process.env.MONGO_URI) {
-    console.error("❌ MONGO_URI is not defined in environment variables");
+    console.error("❌ MONGO_URI is not defined");
     process.exit(1);
 }
 
+// ======================
+// MONGODB CONNECT
+// ======================
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected"))
     .catch(err => {
@@ -33,9 +36,9 @@ mongoose.connect(process.env.MONGO_URI)
         process.exit(1);
     });
 
-// =====================
+// ======================
 // USER MODEL
-// =====================
+// ======================
 const userSchema = new mongoose.Schema({
     username: { type: String, unique: true },
     password: String,
@@ -44,39 +47,13 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// =====================
-// LOGIN ROUTE
-// =====================
-app.post("/api/login", async (req, res) => {
-    try {
-        const { username, password } = req.body;
-
-        const user = await User.findOne({ username });
-        if (!user) {
-            return res.status(401).json({ success: false, message: "Invalid credentials" });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ success: false, message: "Invalid credentials" });
-        }
-
-        const token = jwt.sign(
-            { id: user._id, role: user.role },
-            SECRET_KEY,
-            { expiresIn: "1h" }
-        );
-
-        res.json({ success: true, token });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error" });
-    }
-});
+// ======================
+// CREATE ADMIN (TEMP ROUTE)
+// ======================
 app.get("/create-admin", async (req, res) => {
     try {
         const existing = await User.findOne({ username: "admin" });
+
         if (existing) {
             return res.send("Admin already exists");
         }
@@ -97,9 +74,40 @@ app.get("/create-admin", async (req, res) => {
     }
 });
 
-// =====================
-// PROTECTED ROUTE
-// =====================
+// ======================
+// LOGIN ROUTE
+// ======================
+app.post("/api/login", async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(401).json({ success: false, message: "Invalid username" });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Wrong password" });
+        }
+
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            SECRET_KEY,
+            { expiresIn: "1h" }
+        );
+
+        res.json({ success: true, token });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+// ======================
+// PROTECTED ROUTE EXAMPLE
+// ======================
 app.get("/api/protected", (req, res) => {
     const authHeader = req.headers.authorization;
 
@@ -117,9 +125,9 @@ app.get("/api/protected", (req, res) => {
     }
 });
 
-// =====================
+// ======================
 // START SERVER
-// =====================
+// ======================
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
