@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Makers Secure Portal</title>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: black;
+            font-family: monospace;
+            color: #00ffff;
+            animation: flicker 0.15s infinite;
+        }
+
+        /* Screen Flicker */
+        @keyframes flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.98; }
+            100% { opacity: 1; }
+        }
+
+        /* Scan Lines */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(0, 255, 255, 0.05) 0px,
+                rgba(0, 255, 255, 0.05) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .login-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 10, 20, 0.9);
+            padding: 40px;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 40px #00ffff;
+            text-align: center;
+            z-index: 10;
+        }
+
+        input {
+            width: 240px;
+            padding: 10px;
+            margin: 10px 0;
+            background: black;
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            outline: none;
+        }
+
+        button {
+            padding: 10px 30px;
+            background: #00ffff;
+            color: black;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            box-shadow: 0 0 20px #00ffff;
+        }
+
+        #message {
+            margin-top: 10px;
+            height: 20px;
+        }
+
+        /* Red Flash */
+        .flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 0, 0, 0.3);
+            z-index: 50;
+            animation: flashAnim 0.4s ease;
+        }
+
+        @keyframes flashAnim {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="login-box">
+    <h2>MAKERS SECURE ACCESS ⚡</h2>
+
+    <input id="username" placeholder="Team ID"><br>
+    <input id="password" type="password" placeholder="Access Key"><br>
+
+    <button onclick="login()">ACCESS SYSTEM ⚡</button>
+
+    <p id="message"></p>
+</div>
+
+<script>
+const canvas = document.getElementById("bg");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+/* MATRIX */
+let letters = "01";
+let fontSize = 14;
+let columns = canvas.width / fontSize;
+let drops = [];
+
+for (let i = 0; i < columns; i++) drops[i] = 1;
+
+/* PARTICLES */
+let particles = [];
+for (let i = 0; i < 60; i++) {
+    particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        dx: (Math.random() - 0.5) * 1.5,
+        dy: (Math.random() - 0.5) * 1.5
+    });
+}
+
+function drawMatrix() {
+    ctx.fillStyle = "rgba(0,0,0,0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#00ff88";
+    ctx.font = fontSize + "px monospace";
+
+    for (let i = 0; i < drops.length; i++) {
+        let text = letters[Math.floor(Math.random() * letters.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975)
+            drops[i] = 0;
+
+        drops[i]++;
+    }
+}
+
+function drawCircuit() {
+    for (let i = 0; i < particles.length; i++) {
+        let p = particles[i];
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = "#00ffff";
+        ctx.fill();
+
+        p.x += p.dx;
+        p.y += p.dy;
+
+        if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+
+        for (let j = i + 1; j < particles.length; j++) {
+            let p2 = particles[j];
+            let distance = Math.hypot(p.x - p2.x, p.y - p2.y);
+
+            if (distance < 120) {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = "rgba(0,255,255,0.2)";
+                ctx.stroke();
+            }
+        }
+    }
+}
+
+function animate() {
+    drawMatrix();
+    drawCircuit();
+    requestAnimationFrame(animate);
+}
+animate();
+
+/* LOGIN */
+async function login() {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const msg = document.getElementById("message");
+
+    const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        localStorage.setItem("makersToken", data.token);
+        startDecryptSequence();
+    } else {
+        msg.style.color = "red";
+        msg.innerText = "ACCESS DENIED ❌";
+        flashRed();
+    }
+}
+
+/* RED FLASH */
+function flashRed() {
+    let flash = document.createElement("div");
+    flash.className = "flash";
+    document.body.appendChild(flash);
+
+    setTimeout(() => {
+        flash.remove();
+    }, 400);
+}
+
+/* TYPING EFFECT */
+function startDecryptSequence() {
+    let box = document.querySelector(".login-box");
+
+    box.innerHTML = `
+        <h2>ACCESS AUTHORIZED ⚡</h2>
+        <p id="decryptText"></p>
+    `;
+
+    let messages = [
+        "Verifying Team Identity...",
+        "Establishing Secure Channel...",
+        "Loading Makers Workspace...",
+        "Preparing Collaboration Environment...",
+        "Access Granted."
+    ];
+
+    let textElement = document.getElementById("decryptText");
+    let lineIndex = 0;
+    let charIndex = 0;
+
+    function typeLine() {
+        if (lineIndex < messages.length) {
+            if (charIndex < messages[lineIndex].length) {
+                textElement.innerHTML += messages[lineIndex].charAt(charIndex);
+                charIndex++;
+                setTimeout(typeLine, 25);
+            } else {
+                textElement.innerHTML += "<br>> ";
+                lineIndex++;
+                charIndex = 0;
+                setTimeout(typeLine, 300);
+            }
+        } else {
+            setTimeout(() => {
+    sessionStorage.setItem("makersAuth", "true");
+    window.location.href = "dashboard.html";
+}, 800);
+        }
+    }
+
+    textElement.innerHTML = "> ";
+    typeLine();
+}
+
+window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
+</script>
+
+</body>
+</html>
