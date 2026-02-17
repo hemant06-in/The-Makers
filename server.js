@@ -48,33 +48,6 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ======================
-// CREATE ADMIN (TEMP ROUTE)
-// ======================
-app.get("/create-admin", async (req, res) => {
-    try {
-        const existing = await User.findOne({ username: "admin" });
-
-        if (existing) {
-            return res.send("Admin already exists");
-        }
-
-        const hashedPassword = await bcrypt.hash("Makers123", 10);
-
-        await User.create({
-            username: "admin",
-            password: hashedPassword,
-            role: "admin"
-        });
-
-        res.send("Admin created successfully ✅");
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error creating admin");
-    }
-});
-
-// ======================
 // LOGIN ROUTE
 // ======================
 app.post("/api/login", async (req, res) => {
@@ -131,3 +104,4 @@ app.get("/api/protected", (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
+
