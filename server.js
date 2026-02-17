@@ -12,7 +12,7 @@ const SECRET_KEY = "makers_secret_key";
 // Fake user (for now)
 const USER = {
     username: "makers",
-    password: "makers"
+    password: "2026@"
 };
 
 // LOGIN API
@@ -49,4 +49,5 @@ const port = process.env.port || 3000;
 
 app.listen(3000, () => {
     console.log("Server running.....");
+
 });
