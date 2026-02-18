@@ -218,7 +218,7 @@ async function login() {
     const data = await response.json();
 
     if (data.success) {
-        localStorage.setItem("makersToken", data.token);
+        localStorage.setItem("token", data.token);
         startDecryptSequence();
     } else {
         msg.style.color = "red";
@@ -290,4 +290,5 @@ window.addEventListener("resize", () => {
 </script>
 
 </body>
+
 </html>
